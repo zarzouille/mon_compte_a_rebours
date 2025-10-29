@@ -17,15 +17,18 @@ def countdown():
         end_str = request.args.get("to", CONFIG.get("target_date"))
         end_time = datetime.fromisoformat(end_str)
         now = datetime.utcnow()
-        delta = end_time - now
-
-        if delta.total_seconds() < 0:
+        
+        # Calcul complet des secondes restantes
+        remaining = int((end_time - now).total_seconds())
+        
+        if remaining <= 0:
             text = "⏰ Terminé !"
         else:
-            days = delta.days
-            hours, remainder = divmod(delta.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            text = f"{CONFIG['message_prefix']}{days}j {hours:02}:{minutes:02}:{seconds:02}"
+        days, remainder = divmod(remaining, 86400)  # 86400 secondes dans un jour
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        text = f"{CONFIG['message_prefix']}{days}j {hours:02}:{minutes:02}:{seconds:02}"
+
 
         # Créer l’image
         img = Image.new("RGB", (CONFIG["width"], CONFIG["height"]), CONFIG["background_color"])
