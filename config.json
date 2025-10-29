@@ -1,0 +1,11 @@
+{
+  "width": 400,
+  "height": 100,
+  "background_color": "#FFFFFF",
+  "text_color": "#1A1A1A",
+  "font_path": "arial.ttf",
+  "font_size": 36,
+  "position": [20, 25],
+  "message_prefix": "Temps restant : ",
+  "error_color": "#FF0000"
+}
