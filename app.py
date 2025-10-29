@@ -13,7 +13,7 @@ with open("config.json", "r") as f:
 @app.route("/countdown.png")
 def countdown():
     try:
-        end_str = request.args.get("to")
+        end_str = request.args.get("to", CONFIG.get("target_date"))
         end_time = datetime.fromisoformat(end_str)
         now = datetime.utcnow()
         delta = end_time - now
