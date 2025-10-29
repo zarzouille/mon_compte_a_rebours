@@ -6,13 +6,14 @@ import json, os
 
 app = Flask(__name__)
 
-# Charger la configuration depuis le fichier JSON
+# Charger la configuration
 with open("config.json", "r") as f:
     CONFIG = json.load(f)
 
 @app.route("/countdown.png")
 def countdown():
     try:
+        # Récupérer la date cible (depuis URL ou config)
         end_str = request.args.get("to", CONFIG.get("target_date"))
         end_time = datetime.fromisoformat(end_str)
         now = datetime.utcnow()
@@ -30,18 +31,40 @@ def countdown():
         img = Image.new("RGB", (CONFIG["width"], CONFIG["height"]), CONFIG["background_color"])
         draw = ImageDraw.Draw(img)
 
+        # Charger la police
         try:
             font = ImageFont.truetype(CONFIG["font_path"], CONFIG["font_size"])
         except:
             font = ImageFont.load_default()
 
-        draw.text(tuple(CONFIG["position"]), text, fill=CONFIG["text_color"], font=font)
+        # Calculer la taille du texte
+        text_bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        # Calcul horizontal (text_align)
+        if CONFIG.get("text_align", "left") == "center":
+            x = (CONFIG["width"] - text_width) // 2
+        elif CONFIG["text_align"] == "right":
+            x = CONFIG["width"] - text_width - 10
+        else:  # left
+            x = 10
+
+        # Calcul vertical (vertical_align)
+        if CONFIG.get("vertical_align", "top") == "middle":
+            y = (CONFIG["height"] - text_height) // 2
+        elif CONFIG["vertical_align"] == "bottom":
+            y = CONFIG["height"] - text_height - 10
+        else:  # top
+            y = 10
+
+        # Dessiner le texte
+        draw.text((x, y), text, fill=CONFIG["text_color"], font=font)
 
     except Exception as e:
-        # En cas d’erreur, afficher un message rouge
         img = Image.new("RGB", (CONFIG["width"], CONFIG["height"]), CONFIG["background_color"])
         draw = ImageDraw.Draw(img)
-        draw.text((20, 25), f"Erreur: {str(e)}", fill=CONFIG["error_color"])
+        draw.text((10, 40), f"Erreur: {e}", fill="#FF0000")
 
     buf = BytesIO()
     img.save(buf, format="PNG")
