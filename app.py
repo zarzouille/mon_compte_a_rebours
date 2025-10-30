@@ -1,6 +1,21 @@
+from flask import Flask, send_file, request
+from datetime import datetime, timedelta
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+import json
+
+# Charger la config
+with open("config.json", "r") as f:
+    CONFIG = json.load(f)
+
+# ✅ Créer l'application Flask
+app = Flask(__name__)
+
+# === Tes routes ensuite ===
+
 @app.route("/countdown.gif")
 def countdown_gif():
-    loop_duration = 20  # secondes d’animation
+    loop_duration = CONFIG.get("loop_duration", 20)
     end_str = request.args.get("to", CONFIG.get("target_date"))
     end_time = datetime.fromisoformat(end_str)
     now = datetime.utcnow()
@@ -40,8 +55,12 @@ def countdown_gif():
         buf, format="GIF",
         save_all=True,
         append_images=frames[1:],
-        duration=1000,  # 1 image par seconde
+        duration=1000,
         loop=0
     )
     buf.seek(0)
     return send_file(buf, mimetype="image/gif")
+
+# ✅ Important pour Render
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
