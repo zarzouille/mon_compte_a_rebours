@@ -4,14 +4,20 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import json
 
-# Charger la config
+# Charger la configuration
 with open("config.json", "r") as f:
     CONFIG = json.load(f)
 
-# ✅ Créer l'application Flask
+# Créer l'application Flask
 app = Flask(__name__)
 
-# === Tes routes ensuite ===
+@app.route("/")
+def home():
+    return (
+        "<h2>🕒 Countdown Generator</h2>"
+        "<p>Utilise ce format d'URL :</p>"
+        "<pre>/countdown.gif?to=2025-12-31T23:59:59</pre>"
+    )
 
 @app.route("/countdown.gif")
 def countdown_gif():
@@ -37,11 +43,13 @@ def countdown_gif():
         img = Image.new("RGB", (CONFIG["width"], CONFIG["height"]), CONFIG["background_color"])
         draw = ImageDraw.Draw(img)
 
+        # Charger la police
         try:
             font = ImageFont.truetype(CONFIG["font_path"], CONFIG["font_size"])
         except:
             font = ImageFont.load_default()
 
+        # Calcul du centrage du texte
         text_bbox = draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
@@ -50,17 +58,19 @@ def countdown_gif():
         draw.text((x, y), text, fill=CONFIG["text_color"], font=font)
         frames.append(img)
 
+    # Créer le GIF animé (Sendtric-style)
     buf = BytesIO()
     frames[0].save(
-        buf, format="GIF",
+        buf,
+        format="GIF",
         save_all=True,
         append_images=frames[1:],
-        duration=1000,
+        duration=1000,  # 1 image par seconde
         loop=0
     )
     buf.seek(0)
     return send_file(buf, mimetype="image/gif")
 
-# ✅ Important pour Render
+# Configuration Render
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
