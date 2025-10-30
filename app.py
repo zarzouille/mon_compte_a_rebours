@@ -50,9 +50,12 @@ def home():
 def countdown_gif():
     loop_duration = CONFIG.get("loop_duration", 30)
     end_str = request.args.get("to", CONFIG.get("target_date"))
-    end_time = datetime.fromisoformat(end_str)
-    now = datetime.utcnow()
+    try:
+        end_time = datetime.fromisoformat(end_str)
+    except ValueError:
+        return "Date invalide. Format attendu : YYYY-MM-DDTHH:MM:SS", 400
 
+    now = datetime.utcnow()
     frames = []
 
     for i in range(loop_duration):
@@ -77,3 +80,22 @@ def countdown_gif():
 
         text_bbox = draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+        x = (CONFIG["width"] - text_width) // 2
+        y = (CONFIG["height"] - text_height) // 2
+        draw.text((x, y), text, font=font, fill=CONFIG["text_color"])
+
+        frames.append(img)
+
+    # Créer le GIF en mémoire
+    buf = BytesIO()
+    frames[0].save(buf, format="GIF", save_all=True, append_images=frames[1:], loop=0, duration=1000)
+    buf.seek(0)
+    return send_file(buf, mimetype="image/gif")
+
+# ============================
+# Lancer l'application (local)
+# ============================
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
