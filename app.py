@@ -50,7 +50,8 @@ def home():
 @app.route("/countdown.gif")
 def countdown_gif():
     loop_duration = CONFIG.get("loop_duration", 30)
-    end_str = request.args.get("to", CONFIG.get("target_date"))
+    # 🗓️ Utiliser la date du config.json par défaut
+    end_str = CONFIG.get("target_date", "2025-12-31T23:59:59")
     try:
         end_time = datetime.fromisoformat(end_str)
     except ValueError:
