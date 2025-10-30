@@ -1,38 +1,48 @@
 import os
-from flask import Flask, send_file, request
+import json
+import sys
 from datetime import datetime, timedelta
 from io import BytesIO
+from flask import Flask, send_file, request, render_template, redirect, url_for
 from PIL import Image, ImageDraw, ImageFont
-import json, sys
 from json import JSONDecodeError
 
 # ============================
-# Charger la configuration
+# Configuration par défaut
 # ============================
 DEFAULT_CONFIG = {
     "width": 600,
     "height": 200,
     "background_color": "#F5F5F5",
     "text_color": "#222222",
-    "font_path": "arial.ttf",
-    "font_size": 70,
+    "font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "font_size": 40,
     "message_prefix": "Temps restant : ",
     "target_date": "2025-12-31T23:59:59",
-    "loop_duration": 30
+    "loop_duration": 40
 }
 
-try:
-    with open("config.json", "r", encoding="utf-8") as f:
-        CONFIG = json.load(f)
-    if not isinstance(CONFIG, dict):
-        raise ValueError("config.json doit contenir un objet JSON valide.")
-except (FileNotFoundError, JSONDecodeError, ValueError) as e:
-    print("⚠️  Erreur lors du chargement de config.json :", e, file=sys.stderr)
-    print("➡️  Utilisation de la configuration par défaut.", file=sys.stderr)
-    CONFIG = DEFAULT_CONFIG.copy()
+CONFIG_PATH = "config.json"
+
+def load_config():
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        if not isinstance(cfg, dict):
+            raise ValueError
+        return {**DEFAULT_CONFIG, **cfg}
+    except (FileNotFoundError, JSONDecodeError, ValueError):
+        print("⚠️ Erreur config.json, utilisation de la config par défaut.", file=sys.stderr)
+        return DEFAULT_CONFIG.copy()
+
+def save_config(cfg):
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+CONFIG = load_config()
 
 # ============================
-# Créer l'application Flask
+# App Flask
 # ============================
 app = Flask(__name__)
 
@@ -40,22 +50,31 @@ app = Flask(__name__)
 def home():
     return (
         "<h2>🕒 Countdown Generator</h2>"
-        "<p>Utilise ce format d'URL :</p>"
-        "<pre>/countdown.gif?to=2025-12-31T23:59:59</pre>"
+        "<p><a href='/settings'>Configurer le design</a></p>"
+        "<p><img src='/countdown.gif' alt='Countdown GIF'></p>"
     )
 
-# ============================
-# Génération du GIF
-# ============================
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    global CONFIG
+    if request.method == "POST":
+        CONFIG["target_date"] = request.form.get("target_date", CONFIG["target_date"])
+        CONFIG["background_color"] = request.form.get("background_color", CONFIG["background_color"])
+        CONFIG["text_color"] = request.form.get("text_color", CONFIG["text_color"])
+        CONFIG["font_size"] = int(request.form.get("font_size", CONFIG["font_size"]))
+        CONFIG["message_prefix"] = request.form.get("message_prefix", CONFIG["message_prefix"])
+        save_config(CONFIG)
+        return redirect(url_for("home"))
+    return render_template("settings.html", config=CONFIG)
+
 @app.route("/countdown.gif")
 def countdown_gif():
-    loop_duration = CONFIG.get("loop_duration", 30)
-    # 🗓️ Utiliser la date du config.json par défaut
-    end_str = CONFIG.get("target_date", "2025-12-31T23:59:59")
+    cfg = load_config()
+    loop_duration = cfg.get("loop_duration", 40)
     try:
-        end_time = datetime.fromisoformat(end_str)
+        end_time = datetime.fromisoformat(cfg["target_date"])
     except ValueError:
-        return "Date invalide. Format attendu : YYYY-MM-DDTHH:MM:SS", 400
+        return "Date invalide dans config.json", 400
 
     now = datetime.utcnow()
     frames = []
@@ -70,38 +89,30 @@ def countdown_gif():
             days, rem = divmod(remaining, 86400)
             hours, rem = divmod(rem, 3600)
             minutes, seconds = divmod(rem, 60)
-            text = f"{CONFIG['message_prefix']}{days}j {hours:02}:{minutes:02}:{seconds:02}"
+            text = f"{cfg['message_prefix']}{days}j {hours:02}:{minutes:02}:{seconds:02}"
 
-        img = Image.new("RGB", (CONFIG["width"], CONFIG["height"]), CONFIG["background_color"])
+        img = Image.new("RGB", (cfg["width"], cfg["height"]), cfg["background_color"])
         draw = ImageDraw.Draw(img)
 
         try:
-            font = ImageFont.truetype(CONFIG["font_path"], CONFIG["font_size"])
+            font = ImageFont.truetype(cfg["font_path"], cfg["font_size"])
         except:
-            # ⚙️ Si la police n’existe pas, on crée une police par défaut avec une taille proche
-            print("⚠️ Police non trouvée, utilisation de la police par défaut.", file=sys.stderr)
             font = ImageFont.load_default()
-            # Astuce : créer une police bitmap "étirée" pour simuler la taille voulue
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", CONFIG["font_size"])
 
         text_bbox = draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
-        x = (CONFIG["width"] - text_width) // 2
-        y = (CONFIG["height"] - text_height) // 2
-        draw.text((x, y), text, font=font, fill=CONFIG["text_color"])
+        x = (cfg["width"] - text_width) // 2
+        y = (cfg["height"] - text_height) // 2
+        draw.text((x, y), text, font=font, fill=cfg["text_color"])
 
         frames.append(img)
 
-    # Créer le GIF en mémoire
     buf = BytesIO()
     frames[0].save(buf, format="GIF", save_all=True, append_images=frames[1:], loop=0, duration=1000)
     buf.seek(0)
     return send_file(buf, mimetype="image/gif")
 
-# ============================
-# Lancer l'application (local)
-# ============================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
