@@ -77,7 +77,11 @@ def countdown_gif():
         try:
             font = ImageFont.truetype(CONFIG["font_path"], CONFIG["font_size"])
         except:
+            # ⚙️ Si la police n’existe pas, on crée une police par défaut avec une taille proche
+            print("⚠️ Police non trouvée, utilisation de la police par défaut.", file=sys.stderr)
             font = ImageFont.load_default()
+            # Astuce : créer une police bitmap "étirée" pour simuler la taille voulue
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", CONFIG["font_size"])
 
         text_bbox = draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
