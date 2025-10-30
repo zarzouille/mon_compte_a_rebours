@@ -9,8 +9,8 @@ from json import JSONDecodeError
 # Charger la configuration
 # ============================
 DEFAULT_CONFIG = {
-    "width": 400,
-    "height": 100,
+    "width": 600,
+    "height": 200,
     "background_color": "#F5F5F5",
     "text_color": "#222222",
     "font_path": "arial.ttf",
@@ -48,7 +48,7 @@ def home():
 # ============================
 @app.route("/countdown.gif")
 def countdown_gif():
-    loop_duration = CONFIG.get("loop_duration", 20)
+    loop_duration = CONFIG.get("loop_duration", 30)
     end_str = request.args.get("to", CONFIG.get("target_date"))
     end_time = datetime.fromisoformat(end_str)
     now = datetime.utcnow()
